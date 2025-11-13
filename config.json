@@ -1,0 +1,223 @@
+{
+  "Flujo Cámara de contacto 1": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "Flujo Salida de Lodo Sedimentador Secundario 3": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "Flujo Aire Reactor 2": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "Nivel Pozo WAS": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "OD Reactor 2": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "Flujo Afluente PTAR": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "Flujo Alimentación Digestor 1": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "Flujo Alimentación Digestor 2": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "Flujo Alimentación Digestor 3": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "Flujo Aire Reactor 1": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "Flujo Aire Reactor 3": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "OD Reactor 1": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "Flujo Cámara de contacto 2": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  }
+}
