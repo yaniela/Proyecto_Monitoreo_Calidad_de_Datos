@@ -1,0 +1,6 @@
+data/
+output/
+resultados/
+
+# Configuraciones locales
+config_local.json

@@ -9,23 +9,23 @@ except ImportError:
 
 class OutlierDetector:
     """Clase base para detectores de outliers"""
-    def detect(self, data, residuals):
+    def detect(self, data, residuals=None):
         """
         Detecta outliers
         
         Args:
             data: Serie de tiempo original
-            residuals: Residuos del modelo
+            residuals: Residuos del modelo (opcional, para algunos detectores)
             
         Returns:
-            labels: Array de etiquetas ('normal', 'outlier', 'change')
-            outlier_score: Score de outliers
-            change_score: Score de cambios
+            labels: Array de etiquetas
+            scores: Scores relevantes
+            additional_data: Datos adicionales (ej: valores sin outliers)
         """
         raise NotImplementedError
 
 
-class DiffDetector(OutlierDetector):
+class AdaptiveVarianceDetector(OutlierDetector):
     """
     Detector basado en varianza adaptativa y ChangeFinder.
     Asume que los residuos distribuyen normal.
@@ -58,8 +58,11 @@ class DiffDetector(OutlierDetector):
         if changefinder is None:
             raise ImportError("changefinder is required. Install with: pip install changefinder")
     
-    def detect(self, data, residuals):
+    def detect(self, data, residuals=None):
         """Detecta outliers usando varianza adaptativa y ChangeFinder"""
+        if residuals is None:
+            raise ValueError("AdaptiveVarianceDetector requiere residuals")
+        
         n = len(data)
         
         # 1. Calcular varianza adaptativa
@@ -102,4 +105,132 @@ class DiffDetector(OutlierDetector):
         labels[is_out] = "outlier"
         labels[is_ch] = "change"
         
-        return labels, outlier_score, score_cambio
+        return {
+            'labels': labels,
+            'outlier_score': outlier_score,
+            'change_score': score_cambio,
+            'residuals': residuals
+        }
+
+class DiffDetector(OutlierDetector):
+    """
+    Detector basado en diferencias centradas.
+    """
+    def __init__(self, lambda_centrada=None, k=0, quantile_low=0.01, quantile_high=0.999):
+        """
+        Args:
+            lambda_centrada: Threshold para diff_centrada (si None, se calcula desde cuantiles)
+            k: Threshold para diferencia absoluta con dato anterior (si 0, se calcula desde cuantiles)
+            quantile_low: Cuantil inferior para calcular lambda_centrada y k
+            quantile_high: Cuantil superior para calcular lambda_centrada y k
+        """
+        self.lambda_centrada = lambda_centrada
+        self.k = k
+        self.quantile_low = quantile_low
+        self.quantile_high = quantile_high
+    
+    def conseguir_diff_centrada(self, data):
+        """
+        Calcula la diferencia centrada para cada punto.
+        Versión vectorizada.
+        """
+        serie = pd.Series(data)
+        
+        val_prev = serie.shift(1).fillna(serie.shift(2))
+        val_sig = serie.shift(-1).fillna(serie.shift(-2))
+        
+        diff_prev = np.abs(val_prev - serie)
+        diff_sig = np.abs(val_sig - serie)
+        
+        diff_centrada = np.minimum(diff_prev, diff_sig)
+        
+        return diff_centrada.values
+    
+    def detect(self, data, residuals=None):
+        """Detecta outliers usando diferencias centradas - VECTORIZADO"""
+        n = len(data)
+        serie = pd.Series(data)
+        
+        # Calcular lambda_centrada si no está especificado
+        if self.lambda_centrada is None or self.lambda_centrada == 0:
+            diff_centrada_initial = self.conseguir_diff_centrada(data)
+            valid_diff = diff_centrada_initial[np.isfinite(diff_centrada_initial)]
+            if len(valid_diff) > 0:
+                lambda_centrada = np.quantile(valid_diff, self.quantile_high) - np.quantile(valid_diff, self.quantile_low)
+            else:
+                lambda_centrada = 1.0
+        else:
+            lambda_centrada = self.lambda_centrada
+        
+        # Calcular k si es 0
+        if self.k == 0:
+            valid_serie = serie[np.isfinite(serie)]
+            if len(valid_serie) > 0:
+                k = np.quantile(valid_serie, self.quantile_high) - np.quantile(valid_serie, self.quantile_low)
+            else:
+                k = 1.0
+        else:
+            k = self.k
+        
+        print(f"    Lambda centrada: {lambda_centrada:.4f}")
+        print(f"    K: {k:.4f}")
+        
+        # Inicializar
+        valores_sin_outliers = data.copy()
+        labels = np.full(n, "normal", dtype=object)
+        
+        # Iteración con reemplazo de outliers
+        max_iterations = 5  # Máximo de iteraciones para converger
+        
+        for iteration in range(max_iterations):
+            # Calcular diff_centrada y diff sobre valores actuales (sin outliers)
+            diff_centrada = self.conseguir_diff_centrada(valores_sin_outliers)
+            diff = pd.Series(valores_sin_outliers).diff().values
+            
+            # Detectar outliers
+            is_outlier_diff_centrada = diff_centrada >= lambda_centrada
+            is_outlier_diff = np.abs(diff) >= k
+            
+            is_outlier = is_outlier_diff_centrada | is_outlier_diff
+            
+            # Marcar NaN
+            is_outlier[np.isnan(data)] = False
+            
+            # Si no hay cambios, terminar
+            if not np.any(is_outlier):
+                break
+            
+            # Actualizar labels
+            labels[is_outlier] = "outlier"
+            
+            # Reemplazar outliers con valor anterior + ruido
+            for i in np.where(is_outlier)[0]:
+                if i > 0:
+                    val_prev = valores_sin_outliers[i-1]
+                    ruido = np.random.normal(0, 0.01 * abs(val_prev) if val_prev != 0 else 0.01)
+                    valores_sin_outliers[i] = val_prev + ruido
+                else:
+                    # Primer valor: buscar siguiente válido
+                    siguiente_valido = None
+                    for j in range(i+1, min(i+10, n)):
+                        if not np.isnan(data[j]):
+                            siguiente_valido = data[j]
+                            break
+                    if siguiente_valido is not None:
+                        valores_sin_outliers[i] = siguiente_valido
+        
+        # Calcular scores finales
+        diff_centrada_final = self.conseguir_diff_centrada(valores_sin_outliers)
+        diff_final = pd.Series(valores_sin_outliers).diff().values
+        
+        # Marcar NaN en labels
+        labels[np.isnan(data)] = np.nan
+        
+        return {
+            'labels': labels,
+            'diff_centrada_score': diff_centrada_final,
+            'diff_score': np.abs(diff_final),
+            'valores_sin_outliers': valores_sin_outliers,
+            'lambda_centrada_usado': lambda_centrada,
+            'k_usado': k
+        }

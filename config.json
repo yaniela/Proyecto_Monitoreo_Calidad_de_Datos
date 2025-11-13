@@ -1,5 +1,5 @@
 {
-  "Flujo Cámara de contacto 1": {
+  "Conductividad DAF": {
     "ts_model": "AR",
     "ts_params": {
       "q": 2,
@@ -16,7 +16,7 @@
       "k": 0
     }
   },
-  "Flujo Salida de Lodo Sedimentador Secundario 3": {
+  "Flujo Parshall 01 entrada a Ecualizador 1": {
     "ts_model": "AR",
     "ts_params": {
       "q": 2,
@@ -33,7 +33,7 @@
       "k": 0
     }
   },
-  "Flujo Aire Reactor 2": {
+  "Flujo de envío a DAF": {
     "ts_model": "AR",
     "ts_params": {
       "q": 2,
@@ -50,7 +50,7 @@
       "k": 0
     }
   },
-  "Nivel Pozo WAS": {
+  "Nivel Ecualizador 1 (Tk 30m3)": {
     "ts_model": "AR",
     "ts_params": {
       "q": 2,
@@ -67,7 +67,7 @@
       "k": 0
     }
   },
-  "OD Reactor 2": {
+  "Nivel Ecualizador 2 (Tk 250m3)": {
     "ts_model": "AR",
     "ts_params": {
       "q": 2,
@@ -84,7 +84,7 @@
       "k": 0
     }
   },
-  "Flujo Afluente PTAR": {
+  "Temperatura DAF": {
     "ts_model": "AR",
     "ts_params": {
       "q": 2,
@@ -101,7 +101,7 @@
       "k": 0
     }
   },
-  "Flujo Alimentación Digestor 1": {
+  "pH Clarificado DAF (Tk 80m3)": {
     "ts_model": "AR",
     "ts_params": {
       "q": 2,
@@ -118,7 +118,7 @@
       "k": 0
     }
   },
-  "Flujo Alimentación Digestor 2": {
+  "pH Ecualizador 2 (Tk 250m3)": {
     "ts_model": "AR",
     "ts_params": {
       "q": 2,
@@ -135,7 +135,7 @@
       "k": 0
     }
   },
-  "Flujo Alimentación Digestor 3": {
+  "pH coagulación entrada DAF": {
     "ts_model": "AR",
     "ts_params": {
       "q": 2,
@@ -152,7 +152,7 @@
       "k": 0
     }
   },
-  "Flujo Aire Reactor 1": {
+  "pH entrada a Ecualizador 2 (Tk 250m3)": {
     "ts_model": "AR",
     "ts_params": {
       "q": 2,
@@ -169,7 +169,7 @@
       "k": 0
     }
   },
-  "Flujo Aire Reactor 3": {
+  "pH salida a Parshall 02": {
     "ts_model": "AR",
     "ts_params": {
       "q": 2,
@@ -186,7 +186,7 @@
       "k": 0
     }
   },
-  "OD Reactor 1": {
+  "Nivel Clarificado DAF (Tk 80m3)": {
     "ts_model": "AR",
     "ts_params": {
       "q": 2,
@@ -203,7 +203,58 @@
       "k": 0
     }
   },
-  "Flujo Cámara de contacto 2": {
+  "pH entrada a Ecualizador 1": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "Turbidez salida DAF": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "pH salida y control Ecualizador 1": {
+    "ts_model": "AR",
+    "ts_params": {
+      "q": 2,
+      "alpha": 0.005,
+      "quantile": 0.995,
+      "factor_olvido": 0.02,
+      "lag_cambio": 2,
+      "suavizado": 7,
+      "change_quantile": 0.99
+    },
+    "outlier_detector": "diff",
+    "outlier_params": {
+      "lambda_centrada": 12,
+      "k": 0
+    }
+  },
+  "planta1_activa": {
     "ts_model": "AR",
     "ts_params": {
       "q": 2,

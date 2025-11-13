@@ -3,7 +3,7 @@ import json
 import numpy as np
 from pathlib import Path
 from time_series_models import ARModel, MAModel, ARMAModel
-from outlier_detectors import DiffDetector
+from outlier_detectors import AdaptiveVarianceDetector, DiffDetector
 import unicodedata
 
 
@@ -24,22 +24,24 @@ class DataPipeline:
             'AR': ARModel,
             'ARMA': ARMAModel
         }
+        
+        # Mapeo de detectores
+        self.detector_map = {
+            'adaptive_variance': AdaptiveVarianceDetector,
+            'diff': DiffDetector
+        }
     
     def normalize_column_name(self, name):
         """Normaliza nombres de columnas para comparación"""
-        # Normalizar unicode (convierte caracteres acentuados a su forma base)
         normalized = unicodedata.normalize('NFKD', name)
-        # Remover espacios extra
         normalized = ' '.join(normalized.split())
         return normalized
     
     def find_column_in_config(self, column_name):
         """Busca una columna en el config, manejando diferencias de encoding"""
-        # Primero buscar coincidencia exacta
         if column_name in self.config:
             return column_name
         
-        # Normalizar y buscar
         normalized_search = self.normalize_column_name(column_name)
         
         for config_col in self.config.keys():
@@ -53,7 +55,6 @@ class DataPipeline:
         Obtiene el modelo de serie de tiempo y el detector de outliers
         configurados para una columna específica
         """
-        # Buscar la columna en el config
         config_key = self.find_column_in_config(column_name)
         
         if config_key is None:
@@ -61,64 +62,101 @@ class DataPipeline:
         
         col_config = self.config[config_key]
         
-        # Modelo de serie de tiempo
-        ts_model_type = col_config.get('ts_model', 'MA')
-        ts_params = col_config.get('ts_params', {})
+        # Detector de outliers
+        detector_type = col_config.get('outlier_detector', 'adaptive_variance')
         
-        # Obtener parámetro 'q' del modelo
-        q = ts_params.get('q', 2)
+        # Modelo de serie de tiempo (solo para adaptive_variance)
+        ts_model = None
+        if detector_type == 'adaptive_variance':
+            ts_model_type = col_config.get('ts_model', 'MA')
+            ts_params = col_config.get('ts_params', {})
+            q = ts_params.get('q', 2)
+            
+            if ts_model_type == 'ARMA':
+                p = ts_params.get('p', 1)
+                ts_model = ARMAModel(p=p, q=q)
+            else:
+                TSModelClass = self.ts_model_map[ts_model_type]
+                ts_model = TSModelClass(q=q)
         
-        # Para ARMA necesitamos p y q
-        if ts_model_type == 'ARMA':
-            p = ts_params.get('p', 1)
-            ts_model = ARMAModel(p=p, q=q)
+        # Configurar detector según tipo
+        if detector_type == 'adaptive_variance':
+            ts_params = col_config.get('ts_params', {})
+            detector_params = {
+                'alpha': ts_params.get('alpha', 0.005),
+                'quantile': ts_params.get('quantile', 0.995),
+                'factor_olvido': ts_params.get('factor_olvido', 0.02),
+                'lag_cambio': ts_params.get('lag_cambio', 2),
+                'suavizado': ts_params.get('suavizado', 7),
+                'change_quantile': ts_params.get('change_quantile', 0.99)
+            }
+        elif detector_type == 'diff':
+            outlier_params = col_config.get('outlier_params', {})
+            detector_params = {
+                'lambda_centrada': outlier_params.get('lambda_centrada', None),
+                'k': outlier_params.get('k', 0)
+            }
         else:
-            TSModelClass = self.ts_model_map[ts_model_type]
-            ts_model = TSModelClass(q=q)
+            raise ValueError(f"Detector desconocido: {detector_type}")
         
-        # Detector de outliers (siempre DiffDetector)
-        detector_params = {
-            'alpha': ts_params.get('alpha', 0.005),
-            'quantile': ts_params.get('quantile', 0.995),
-            'factor_olvido': ts_params.get('factor_olvido', 0.02),
-            'lag_cambio': ts_params.get('lag_cambio', 2),
-            'suavizado': ts_params.get('suavizado', 7),
-            'change_quantile': ts_params.get('change_quantile', 0.99)
-        }
+        DetectorClass = self.detector_map[detector_type]
+        detector = DetectorClass(**detector_params)
         
-        detector = DiffDetector(**detector_params)
-        
-        return ts_model, detector
+        return ts_model, detector, detector_type
     
-    def process_column(self, column_name, data):
+    def process_column(self, column_name, data, date_time=None):
         """Procesa una columna individual"""
         print(f"\nProcesando columna: {column_name}")
         
         # Obtener modelos específicos
-        ts_model, detector = self.get_models_for_column(column_name)
+        ts_model, detector, detector_type = self.get_models_for_column(column_name)
         
         # Limpiar datos (remover NaN)
-        clean_data = data.dropna().astype(float).values
+        clean_indices = data.notna()
+        clean_data = data[clean_indices].astype(float).values
+        
+        if date_time is not None:
+            clean_date_time = date_time[clean_indices].values
+        else:
+            clean_date_time = None
         
         if len(clean_data) < 10:
             print(f"  ⚠️  Advertencia: muy pocos datos válidos ({len(clean_data)})")
             return None
         
-        # Ajustar modelo de serie de tiempo y obtener residuos
-        print(f"  - Ajustando modelo: {ts_model.__class__.__name__} (q={ts_model.q})")
-        residuals = ts_model.get_residuals(clean_data)
+        # Procesar según el tipo de detector
+        if detector_type == 'adaptive_variance':
+            print(f"  - Ajustando modelo: {ts_model.__class__.__name__} (q={ts_model.q})")
+            residuals = ts_model.get_residuals(clean_data)
+            
+            print(f"  - Detectando outliers con: {detector.__class__.__name__}")
+            result = detector.detect(clean_data, residuals)
+            
+            return {
+                'date_time': clean_date_time,
+                'values': clean_data,
+                'residuals': result['residuals'],
+                'labels': result['labels'],
+                'outlier_score': result['outlier_score'],
+                'change_score': result['change_score'],
+                'detector_type': detector_type
+            }
         
-        # Detectar outliers
-        print(f"  - Detectando outliers con: {detector.__class__.__name__}")
-        labels, outlier_score, change_score = detector.detect(clean_data, residuals)
-        
-        return {
-            'values': clean_data,
-            'residuals': residuals,
-            'labels': labels,
-            'outlier_score': outlier_score,
-            'change_score': change_score
-        }
+        elif detector_type == 'diff':
+            print(f"  - Detectando outliers con: {detector.__class__.__name__}")
+            result = detector.detect(clean_data)
+            
+            return {
+                'date_time': clean_date_time,
+                'values': clean_data,
+                'valores_sin_outliers': result['valores_sin_outliers'],
+                'labels': result['labels'],
+                'diff_centrada_score': result['diff_centrada_score'],
+                'diff_score': result['diff_score'],
+                'lambda_centrada': result['lambda_centrada_usado'],
+                'k_usado': result['k_usado'],
+                'detector_type': detector_type
+            }
     
     def run(self):
         """Ejecuta el pipeline completo"""
@@ -131,21 +169,25 @@ class DataPipeline:
         
         print(f"CSV cargado: {df.shape[0]} filas, {df.shape[1]} columnas\n")
         
+        # Verificar si existe columna date_time
+        has_datetime = 'date_time' in df.columns
+        if has_datetime:
+            df['date_time'] = pd.to_datetime(df['date_time'])
+        
         # Determinar qué columnas procesar
         if self.columns_to_process is None:
-            # Procesar todas las columnas del CSV que estén en el config
             columns_to_run = []
             for csv_col in df.columns:
+                if csv_col == 'date_time':
+                    continue
                 if self.find_column_in_config(csv_col) is not None:
                     columns_to_run.append(csv_col)
             
             print(f"📋 Procesando TODAS las columnas del config ({len(columns_to_run)} columnas)")
         else:
-            # Procesar solo las columnas especificadas
             columns_to_run = self.columns_to_process
             print(f"📋 Procesando columnas especificadas: {columns_to_run}")
             
-            # Verificar que las columnas especificadas estén en el config
             missing_in_config = []
             valid_columns = []
             
@@ -160,7 +202,6 @@ class DataPipeline:
                 for col in missing_in_config:
                     print(f"    - {col}")
                 
-                # Mostrar columnas disponibles en config
                 print(f"\n📋 Columnas disponibles en config.json:")
                 for i, col in enumerate(self.config.keys(), 1):
                     print(f"    {i}. {col}")
@@ -186,32 +227,54 @@ class DataPipeline:
             
             try:
                 # Procesar la columna
-                result = self.process_column(column, df[column])
+                date_time_col = df['date_time'] if has_datetime else None
+                result = self.process_column(column, df[column], date_time_col)
                 
                 if result is None:
                     error_count += 1
                     continue
                 
-                # Crear DataFrame con resultados
-                result_df = pd.DataFrame({
-                    'index': range(len(result['values'])),
-                    'value': result['values'],
-                    'residual': result['residuals'],
-                    'outlier_score': result['outlier_score'],
-                    'change_score': result['change_score'],
-                    'label': result['labels']
-                })
+                # Crear DataFrame según el tipo de detector
+                if result['detector_type'] == 'adaptive_variance':
+                    result_dict = {
+                        'index': range(len(result['values'])),
+                        'value': result['values'],
+                        'residual': result['residuals'],
+                        'outlier_score': result['outlier_score'],
+                        'change_score': result['change_score'],
+                        'label': result['labels']
+                    }
+                    if result['date_time'] is not None:
+                        result_dict = {'date_time': result['date_time'], **result_dict}
+                    
+                elif result['detector_type'] == 'diff':
+                    result_dict = {
+                        'value': result['values'],
+                        'valores_sin_outliers': result['valores_sin_outliers'],
+                        'label': result['labels']
+                    }
+                    if result['date_time'] is not None:
+                        result_dict = {'date_time': result['date_time'], **result_dict}
+                
+                result_df = pd.DataFrame(result_dict)
                 
                 # Guardar CSV
                 output_path = self.output_dir / f"{column}_labeled.csv"
                 result_df.to_csv(output_path, index=False)
                 
                 # Estadísticas
-                outlier_count = (result['labels'] == 'outlier').sum()
-                change_count = (result['labels'] == 'change').sum()
-                normal_count = (result['labels'] == 'normal').sum()
+                if result['detector_type'] == 'adaptive_variance':
+                    outlier_count = (result['labels'] == 'outlier').sum()
+                    change_count = (result['labels'] == 'change').sum()
+                    normal_count = (result['labels'] == 'normal').sum()
+                    print(f"  ✓ Normal: {normal_count}, Outliers: {outlier_count}, Changes: {change_count}")
+                elif result['detector_type'] == 'diff':
+                    outlier_count = (result['labels'] == 'outlier').sum()
+                    normal_count = (result['labels'] == 'normal').sum()
+                    print(f"  ✓ Normal: {normal_count}, Outliers: {outlier_count}")
+                    print(f"  ✓ Lambda centrada usado: {result['lambda_centrada']:.4f}")
+                    print(f"  ✓ K usado: {result['k_usado']:.4f}")  
                 
-                print(f"  ✓ Normal: {normal_count}, Outliers: {outlier_count}, Changes: {change_count}")
                 print(f"  ✓ Guardado: {output_path}")
                 
                 processed_count += 1
