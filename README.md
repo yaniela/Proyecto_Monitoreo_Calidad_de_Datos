@@ -229,6 +229,9 @@ Usa varianza adaptativa sobre residuos de modelos AR/MA/ARMA y ChangeFinder para
 .
 ├── data/                       # Carpeta con datos (ignorada en git)
 ├── output/                     # Resultados del pipeline (ignorada en git)
+├── config_parametros/          # Herramientas de análisis y ajuste de parámetros
+│   ├── threshold_analysis.py  # Análisis de umbrales y recomendaciones
+│   └── config_console.py       # Consola interactiva para editar configuración
 ├── config.json                 # Configuración generada
 ├── generar_config.py          # Script para generar configuración
 ├── main.py                    # Punto de entrada del pipeline
@@ -238,6 +241,107 @@ Usa varianza adaptativa sobre residuos de modelos AR/MA/ARMA y ChangeFinder para
 ├── .gitignore                 # Archivos ignorados por git
 └── README.md                  # Este archivo
 ```
+
+### Carpeta `config_parametros/`
+
+Contiene herramientas para **optimizar y ajustar parámetros** de detección:
+
+#### 1. `threshold_analysis.py` - Análisis de Umbrales
+Analiza tus datos y sugiere los mejores parámetros para cada columna mediante búsqueda en grilla.
+
+**Uso:**
+```bash
+python config_parametros/threshold_analysis.py datos.csv --config config.json --output-prefix analisis
+```
+
+**Genera:**
+- `config_parametros/analisis_summary.csv`: Resumen con parámetros recomendados
+- `config_parametros/analisis_details.json`: Resultados detallados de todas las combinaciones probadas
+
+**Objetivo:** Encontrar parámetros que mantengan la tasa de outliers entre 0.5%-5%
+
+**Opciones:**
+```bash
+# Analizar columnas específicas
+python config_parametros/threshold_analysis.py datos.csv --config config.json \
+  --columns "sensor_1" "sensor_2" --output-prefix mi_analisis
+
+# Especificar columna de tiempo
+python config_parametros/threshold_analysis.py datos.csv --config config.json \
+  --datetime-col timestamp
+```
+
+#### 2. `config_console.py` - Editor Interactivo
+Consola interactiva para modificar configuraciones sin editar JSON manualmente.
+
+**Uso:**
+```bash
+python config_parametros/config_console.py --config config.json --save-as config_editado.json
+```
+
+**Comandos disponibles:**
+- `list` - Listar todas las columnas
+- `show <columna>` - Ver configuración de una columna
+- `set <columna> <parametro> <valor>` - Modificar un parámetro
+  - Ejemplo: `set sensor_1 outlier_params.lambda_centrada 5`
+- `bulk_set <parametro> <valor> <col1> <col2>...` - Modificar múltiples columnas
+  - Ejemplo: `bulk_set outlier_params.k 2 sensor_1 sensor_2 sensor_3`
+- `copy <origen> <destino>` - Copiar configuración entre columnas
+- `save` - Guardar cambios
+- `exit` - Salir
+- `help` - Ver ayuda
+
+**Ejemplo de sesión:**
+```
+cfg> list
+1. sensor_1
+2. sensor_2
+
+cfg> show sensor_1
+{
+  "ts_model": "AR",
+  "outlier_params": {"lambda_centrada": 12, "k": 0}
+}
+
+cfg> set sensor_1 outlier_params.lambda_centrada 8
+✓ Actualizado
+
+cfg> save
+✓ Guardado en config_editado.json
+
+cfg> exit
+```
+
+### Flujo de trabajo recomendado:
+
+1. **Generar configuración inicial:**
+   ```bash
+   python generar_config.py datos.csv --output config.json
+   ```
+
+2. **Analizar y obtener recomendaciones:**
+   ```bash
+   python config_parametros/threshold_analysis.py datos.csv --config config.json
+   ```
+
+3. **Revisar resultados:**
+   ```bash
+   # Ver resumen
+   type config_parametros\<nombre>_summary.csv
+   ```
+
+4. **Ajustar parámetros:**
+   ```bash
+   # Opción A: Usar editor interactivo
+   python config_parametros/config_console.py --config config.json --save-as config_ajustado.json
+   
+   # Opción B: Editar manualmente el JSON
+   ```
+
+5. **Ejecutar pipeline:**
+   ```bash
+   python main.py datos.csv --config config_ajustado.json
+   ```
 
 ## 💡 Ejemplos de Uso
 
